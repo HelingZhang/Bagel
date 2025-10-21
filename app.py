@@ -198,7 +198,7 @@ def text_to_image(prompt, show_thinking=False, cfg_text_scale=4.0, cfg_interval=
 
 # Image Understanding function with thinking option and hyperparameters
 def image_understanding(image: Image.Image, prompt: str, show_thinking=False, 
-                        do_sample=False, text_temperature=0.3, max_new_tokens=512):
+                        do_sample=False, text_temperature=0.3, max_new_tokens=512, generation_assisted_understanding=True):
     if image is None:
         return "Please upload an image."
 
@@ -216,7 +216,7 @@ def image_understanding(image: Image.Image, prompt: str, show_thinking=False,
     
     # Use show_thinking parameter to control thinking process
     result = inferencer(image=image, text=prompt, think=show_thinking, 
-                        understanding_output=True, **inference_hyper)
+                        understanding_output=True, generation_assisted_understanding=True, **inference_hyper)
     return result["text"]
 
 
@@ -249,6 +249,8 @@ def edit_image(image: Image.Image, prompt: str, show_thinking=False, cfg_text_sc
         num_timesteps=num_timesteps,
         cfg_renorm_min=cfg_renorm_min,
         cfg_renorm_type=cfg_renorm_type,
+        # understanding_output=True,
+        generation_assisted_understanding=False,
     )
     
     # Include thinking parameter based on user choice

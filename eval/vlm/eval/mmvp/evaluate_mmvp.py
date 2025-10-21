@@ -17,13 +17,27 @@ import os
 import random
 
 import torch
-from eval.vlm.utils import load_model_and_tokenizer, build_transform, process_conversation
+# lazy import heavy utilities so this module can be imported for dataset
+# inspection without requiring the full ML stack (transformers, etc.).
+try:
+    from eval.vlm.utils import load_model_and_tokenizer, build_transform, process_conversation
+except Exception:
+    # Provide lightweight fallbacks for dataset-only operations.
+    def load_model_and_tokenizer(args):
+        raise RuntimeError('load_model_and_tokenizer is not available in this environment')
+
+    def build_transform():
+        raise RuntimeError('build_transform is not available in this environment')
+
+    def process_conversation(images, conversation):
+        return images, conversation
 from PIL import Image
 from tqdm import tqdm
 
 ds_collections = {
+    # The dataset shipped with the repo lives in `data/MMVP`.
     'MMVP': {
-        'root': 'eval/vlm/data/MMVP',
+        'root': 'data/MMVP',
         'max_new_tokens': 100,
         'min_new_tokens': 1,
     },

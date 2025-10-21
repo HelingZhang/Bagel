@@ -10,9 +10,13 @@ export GPUS=1
 
 DATASETS=("mme" "mmbench-dev-en" "mmvet" "mmmu-val" "mathvista-testmini" "mmvp")
 # DATASETS=("mmmu-val_cot")
+# DATASETS=("mmvp")
 
 DATASETS_STR="${DATASETS[*]}"
 export DATASETS_STR
+
+output_path=log
+model_path=models/BAGEL-7B-MoT
 
 bash scripts/eval/eval_vlm.sh \
     $output_path \

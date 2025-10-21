@@ -15,8 +15,12 @@ from modeling.bagel.qwen2_navit import NaiveCache
 VLM_THINK_SYSTEM_PROMPT = '''You should first think about the reasoning process in the mind and then provide the user with the answer. 
 The reasoning process is enclosed within <think> </think> tags, i.e. <think> reasoning process here </think> answer here'''
 
+
 GEN_THINK_SYSTEM_PROMPT = '''You should first think about the planning process in the mind and then generate the image. 
 The planning process is enclosed within <think> </think> tags, i.e. <think> planning process here </think> image here'''
+
+# GEN_THINK_SYSTEM_PROMPT = '''Given the input image and question, first generate a visual cue image that zooms in or highlights the portion of the image most relevant to the question. 
+# Then, analyze both the original image and your generated cue image, and provide a concise answer to the question.'''
 
 
 class InterleaveInferencer:
@@ -223,6 +227,8 @@ class InterleaveInferencer:
         cfg_renorm_type="global",
         image_shapes=(1024, 1024),
         enable_taylorseer=False,
+        # understanding with generation
+        generation_assisted_understanding=True
     ) -> List[Union[str, Image.Image]]:
 
         output_list = []
@@ -256,6 +262,29 @@ class InterleaveInferencer:
                     raise ValueError(f"Unsupported input type: {type(input_term)}")
 
             if understanding_output:
+                if generation_assisted_understanding:
+                    gen_context = self.update_context_text("Based on the input, we first generate an image of the most relevant region. For example, if the question is What is the purpose of this train? and the image is <image>", gen_context)
+                    img = self.gen_image(
+                        image_shapes, 
+                        gen_context, 
+                        cfg_text_precontext=cfg_text_context, 
+                        cfg_img_precontext=cfg_img_context,
+
+                        cfg_text_scale=cfg_text_scale, 
+                        cfg_img_scale=cfg_img_scale, 
+                        cfg_interval=cfg_interval, 
+                        timestep_shift=timestep_shift, 
+                        num_timesteps=num_timesteps,
+                        cfg_renorm_min=cfg_renorm_min,
+                        cfg_renorm_type=cfg_renorm_type,
+                        enable_taylorseer=enable_taylorseer,
+                    )
+                    # save image
+                    img.save("generated_cue_image.png")
+                    # update context with generated image
+                    input_term = self.vae_transform.resize_transform(pil_img2rgb(img))
+                    gen_context = self.update_context_image(input_term, gen_context, vae=not understanding_output)
+
                 gen_text = self.gen_text(gen_context, do_sample=do_sample, temperature=text_temperature, max_length=max_think_token_n)
                 output_list.append(gen_text)
 
@@ -264,6 +293,7 @@ class InterleaveInferencer:
                     gen_text = self.gen_text(gen_context, do_sample=do_sample, temperature=text_temperature, max_length=max_think_token_n)
                     gen_context = self.update_context_text(gen_text, gen_context)
                     output_list.append(gen_text)
+                    print(gen_text)
 
                 img = self.gen_image(
                     image_shapes, 
@@ -282,6 +312,14 @@ class InterleaveInferencer:
                 )
 
                 output_list.append(img)
+
+                # if generation_assisted_understanding:
+                #     input_term = self.vae_transform.resize_transform(pil_img2rgb(img))
+                #     gen_context = self.update_context_image(input_term, gen_context, vae=not understanding_output)
+                #     gen_context = self.update_context_text("Based on this visual cue, the answer to the original question is:", gen_context)
+                #     gen_text = self.gen_text(gen_context, do_sample=do_sample, temperature=text_temperature, max_length=max_think_token_n)
+                #     output_list.append(gen_text)
+                #     print(gen_text)
 
         return output_list
     
@@ -309,5 +347,6 @@ class InterleaveInferencer:
             if isinstance(i, Image.Image):
                 output_dict['image'] = i
             elif isinstance(i, str):
+                print(i)
                 output_dict['text'] = i
         return output_dict
